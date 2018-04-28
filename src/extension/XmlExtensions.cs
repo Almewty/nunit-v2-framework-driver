@@ -149,12 +149,16 @@ namespace NUnit.Engine.Drivers
 
             if (result.Test.IsSuite)
             {
-                // TODO: These values all should be calculated
+                var passed = CalculateStateCount(result, ResultState.Success);
+                var failed = CalculateStateCount(result, ResultState.Error, ResultState.Failure);
+                var inconclusive = CalculateStateCount(result, ResultState.Inconclusive);
+                var skipped = CalculateStateCount(result, ResultState.Skipped);
+
                 thisNode.AddAttribute("total", result.Test.TestCount.ToString());
-                thisNode.AddAttribute("passed", "0");
-                thisNode.AddAttribute("failed", "0");
-                thisNode.AddAttribute("inconclusive", "0");
-                thisNode.AddAttribute("skipped", "0");
+                thisNode.AddAttribute("passed", passed.ToString());
+                thisNode.AddAttribute("failed", failed.ToString());
+                thisNode.AddAttribute("inconclusive", inconclusive.ToString());
+                thisNode.AddAttribute("skipped", skipped.ToString());
             }
             thisNode.AddAttribute("asserts", result.AssertCount.ToString());
 
@@ -290,6 +294,36 @@ namespace NUnit.Engine.Drivers
         #endregion
 
         #region Helper Methods
+
+        // Counts the number of results in the given state
+        private static int CalculateStateCount(TestResult result, params ResultState[] states)
+        {
+            // if it is a leaf check if state matches
+            const string methodIdentifier = "TestMethod";
+            if (result.Test.TestType == methodIdentifier)
+            {
+                foreach (var state in states)
+                {
+                    if (result.ResultState == state)
+                        return 1;
+                }
+
+                return 0;
+            }
+
+            // ignore non-methods without tests
+            if (result.Results == null)
+                return 0;
+
+            // else go recursive and count all leaf states
+            var count = 0;
+            foreach (TestResult r in result.Results)
+            {
+                count += CalculateStateCount(r, states);
+            }
+
+            return count;
+        }
 
         // Returns ResultState translated to a v3 string representation
         private static string GetTranslatedResultState(ResultState resultState)
