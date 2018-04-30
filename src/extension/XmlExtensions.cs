@@ -150,9 +150,9 @@ namespace NUnit.Engine.Drivers
             if (result.Test.IsSuite)
             {
                 var passed = CalculateStateCount(result, ResultState.Success);
-                var failed = CalculateStateCount(result, ResultState.Error, ResultState.Failure);
+                var failed = CalculateStateCount(result, ResultState.Failure, ResultState.Error, ResultState.Cancelled);
                 var inconclusive = CalculateStateCount(result, ResultState.Inconclusive);
-                var skipped = CalculateStateCount(result, ResultState.Skipped);
+                var skipped = CalculateStateCount(result, ResultState.NotRunnable, ResultState.Skipped, ResultState.Ignored);
 
                 thisNode.AddAttribute("total", result.Test.TestCount.ToString());
                 thisNode.AddAttribute("passed", passed.ToString());
