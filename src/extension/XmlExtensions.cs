@@ -149,12 +149,13 @@ namespace NUnit.Engine.Drivers
 
             if (result.Test.IsSuite)
             {
-                var passed = CalculateStateCount(result, ResultState.Success);
-                var failed = CalculateStateCount(result, ResultState.Failure, ResultState.Error, ResultState.Cancelled);
-                var inconclusive = CalculateStateCount(result, ResultState.Inconclusive);
-                var skipped = CalculateStateCount(result, ResultState.NotRunnable, ResultState.Skipped, ResultState.Ignored);
+                var resultDict = CountResultStates(result);
+                var passed = CountStatesInResultDict(resultDict, ResultState.Success);
+                var failed = CountStatesInResultDict(resultDict, ResultState.Failure, ResultState.Error, ResultState.Cancelled, ResultState.NotRunnable);
+                var inconclusive = CountStatesInResultDict(resultDict, ResultState.Inconclusive);
+                var skipped = CountStatesInResultDict(resultDict, ResultState.Skipped, ResultState.Ignored);
 
-                thisNode.AddAttribute("total", result.Test.TestCount.ToString());
+                thisNode.AddAttribute("total", (passed + failed + inconclusive + skipped).ToString());
                 thisNode.AddAttribute("passed", passed.ToString());
                 thisNode.AddAttribute("failed", failed.ToString());
                 thisNode.AddAttribute("inconclusive", inconclusive.ToString());
@@ -295,31 +296,44 @@ namespace NUnit.Engine.Drivers
 
         #region Helper Methods
 
-        // Counts the number of results in the given state
-        private static int CalculateStateCount(TestResult result, params ResultState[] states)
+        // Counts the number of results
+        private static Dictionary<ResultState, int> CountResultStates(TestResult result, Dictionary<ResultState, int> dict = null)
         {
-            // if it is a leaf check if state matches
+            if (dict == null)
+                dict = new Dictionary<ResultState, int>();
+
+            // if it is a leaf: add state to count
             const string methodIdentifier = "TestMethod";
             if (result.Test.TestType == methodIdentifier)
             {
-                foreach (var state in states)
-                {
-                    if (result.ResultState == state)
-                        return 1;
-                }
-
-                return 0;
+                int count;
+                var state = result.ResultState;
+                dict.TryGetValue(state, out count);
+                dict[state] = count + 1;
             }
 
             // ignore non-methods without tests
             if (result.Results == null)
-                return 0;
+                return dict;
 
             // else go recursive and count all leaf states
-            var count = 0;
             foreach (TestResult r in result.Results)
             {
-                count += CalculateStateCount(r, states);
+                CountResultStates(r, dict);
+            }
+
+            return dict;
+        }
+
+        private static int CountStatesInResultDict(Dictionary<ResultState, int> dict, params ResultState[] states)
+        {
+            int count = 0;
+
+            foreach (var state in states)
+            {
+                int tmpCount;
+                dict.TryGetValue(state, out tmpCount);
+                count += tmpCount;
             }
 
             return count;
